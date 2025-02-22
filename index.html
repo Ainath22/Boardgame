@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monopoly Style Game</title>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; background-color: #004080; color: white; display: flex; flex-direction: column; align-items: center; }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(9, 80px);
+            grid-template-rows: repeat(9, 80px);
+            gap: 2px;
+            margin-top: 20px;
+            position: relative;
+            background-color: #004080;
+            border: 10px solid #ffcc00;
+            padding: 10px;
+            border-radius: 20px;
+        }
+        .cell {
+            width: 80px;
+            height: 80px;
+            border: 2px solid white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            background-color: #ffcc00;
+            color: black;
+            font-weight: bold;
+            border-radius: 5px;
+            position: relative;
+        }
+        .player {
+            position: absolute;
+            font-size: 25px;
+      
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 5px;
+            border-radius: 5px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .center-cell {
+            grid-column: 4 / span 3;
+            grid-row: 4 / span 3;
+            background-color: #004080;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+        }
+        .large-image {
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+            border: 5px solid #ffcc00;
+        }
+        .dice-container {
+            font-size: 200px; /* Aumenta el tamaño del dado */
+            margin: 20px;
+            transition: transform 0.3s ease-in-out;
+            display: inline-block;
+        }
+        button {
+            font-size: 24px; /* Tamaño del texto del botón */
+            padding: 15px 30px; /* Hace el botón más grande */
+            background-color: #ffcc00;
+            color: black;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .game-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px; /* Espacio entre tablero y controles */
+            margin-top: 20px;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px; /* Espacio entre botón y dado */
+        }
+        input{
+height: 50px;
+width: 300px;
+font-size: 25px;
+        }
+        
+    </style>
+</head>
+<body>
+    <h1>Monopoly Style Game</h1>
+    <div>
+        <input type="text" id="playerName" placeholder="Enter player name">
+        <button onclick="addPlayer()">Add Player</button>
+    </div>
+    <div id="winnerMessage" style="display: none; font-size: 24px; font-weight: bold; color: yellow; margin-top: 20px;"></div>
+
+    <div id="playersList"></div>
+    <div class="game-container">
+        <div class="board" id="board"></div>
+        <div class="controls">
+            <button onclick="rollDice()">Roll the Dice</button>
+            <button onclick="moveBack()">Incorrecto</button>
+            <div class="dice-container" id="diceResult">🎲</div>
+        </div>
+    </div>
+    
+
+    <script>
+        let players = [];
+        let currentPlayer = 0;
+
+        function createBoard() {
+            const board = document.getElementById("board");
+            board.innerHTML = "";
+
+            const positions = Array(9).fill(null).map(() => Array(9).fill(null)); 
+            let num = 1;
+
+            // Fila superior
+            for (let col = 0; col < 9; col++) positions[0][col] = num++;
+            // Columna derecha
+            for (let row = 1; row < 9; row++) positions[row][8] = num++;
+            // Fila inferior
+            for (let col = 7; col >= 0; col--) positions[8][col] = num++;
+            // Columna izquierda
+            for (let row = 7; row > 0; row--) positions[row][0] = num++;
+
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    let cell = document.createElement("div");
+
+                    if (row >= 3 && row <= 5 && col >= 3 && col <= 5) {
+                        if (row === 4 && col === 4) {
+                            cell.className = "center-cell";
+                            let centerImage = document.createElement("img");
+                            centerImage.id = "largeImage";
+                            centerImage.className = "large-image";
+                            centerImage.src = "pila.png";
+                            centerImage.alt = "Imagen Central";
+                            cell.appendChild(centerImage);
+                        } else {
+                            cell.style.display = "none"; // Oculta celdas dentro del área central
+                        }
+                    } else {
+                        cell.className = "cell";
+                        if (positions[row][col] !== null) {
+                            let index = positions[row][col];
+                            cell.dataset.index = index;
+
+                            let img = document.createElement("img");
+                            img.src = `casilla${index}.gif`;
+                            img.alt = `Casilla ${index}`;
+                            img.style.width = "100%";
+                            img.style.height = "100%";
+                            img.style.borderRadius = "5px";
+
+                            cell.appendChild(img);
+                        } else {
+                            cell.style.backgroundColor = "#004080";
+                            cell.style.border = "none";
+                        }
+                    }
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        function rollDice() {
+            let dice = Math.floor(Math.random() * 6) + 1;
+            document.getElementById("diceResult").innerText = `🎲 ${dice}`;
+        
+            let player = players[currentPlayer];
+            let newPosition = player.position + dice;
+        
+            if (newPosition >= 32) {
+                player.position = 32; // Fijamos la posición en 32 para evitar reinicio
+                checkWinner(player);
+            } else {
+                player.position = newPosition;
+            }
+        
+            updateBoard();
+            showImage(player.position);
+        
+            currentPlayer = (currentPlayer + 1) % players.length;
+        }
+        
+        
+        function checkWinner(player) {
+            let winnerMessage = document.getElementById("winnerMessage");
+            winnerMessage.innerText = `🎉 ¡${player.name} ha ganado! 🎉`;
+            winnerMessage.style.display = "block";
+        }
+        
+        
+        function addPlayer() {
+            let nameInput = document.getElementById("playerName");
+            let name = nameInput.value.trim();
+            if (name) {
+                players.push({ name: name, position: 1 });
+                nameInput.value = "";
+                updateBoard();
+            }
+        }
+
+        function updateBoard() {
+            document.querySelectorAll(".player").forEach(p => p.remove());
+            players.forEach(player => {
+                let cell = document.querySelector(`[data-index='${player.position}']`);
+                if (cell) {
+                    let playerElem = document.createElement("div");
+                    playerElem.className = "player";
+                    playerElem.innerText = player.name;
+                    cell.appendChild(playerElem);
+                }
+            });
+        }
+
+        function showImage(position) {
+            document.getElementById("largeImage").src = `casilla${position}.gif`;
+        }
+        function moveBack() {
+            let previousPlayer = (currentPlayer - 1 + players.length) % players.length; // Obtiene el jugador anterior
+            let player = players[previousPlayer];
+            
+            player.position = (player.position - 1 + 32) % 32; // Evita posiciones negativas
+            updateBoard();
+            showImage(player.position);
+        }
+        createBoard();
+    </script>
+</body>
+</html>
